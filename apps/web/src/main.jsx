@@ -34,8 +34,6 @@ function App() {
   const [token, setToken] = useState(storedSession?.token || null)
   const [tutors, setTutors] = useState([])
   const [groups, setGroups] = useState([])
-  const [resources, setResources] = useState([])
-  const [quizzes, setQuizzes] = useState([])
   const [joinedGroupIds, setJoinedGroupIds] = useState(new Set())
   const [pendingGroupRequestIds, setPendingGroupRequestIds] = useState(new Set())
   const [sessions, setSessions] = useState([])
@@ -44,13 +42,6 @@ function App() {
   const [tutorCourseFilter, setTutorCourseFilter] = useState('')
   const [tutorSchoolFilter, setTutorSchoolFilter] = useState('')
   const [activeSection, setActiveSection] = useState('overview')
-  const [resourceTab, setResourceTab] = useState('materials')
-  const [resourceSearch, setResourceSearch] = useState('')
-  const [resourceCourseFilter, setResourceCourseFilter] = useState('')
-  const [resourceTypeFilter, setResourceTypeFilter] = useState('')
-  const [activeQuiz, setActiveQuiz] = useState(null)
-  const [quizAnswers, setQuizAnswers] = useState({})
-  const [quizResult, setQuizResult] = useState(null)
   const [selectedTutorId, setSelectedTutorId] = useState(1)
   const [authMode, setAuthMode] = useState('login')
   const [authForm, setAuthForm] = useState(defaultAuthForm)
@@ -78,22 +69,18 @@ function App() {
       const privateOptions = accessToken
         ? { headers: { Authorization: `Bearer ${accessToken}` } }
         : undefined
-      const [tutorsRes, groupsRes, resourcesRes, quizzesRes, membershipsRes, requestsRes, sessionsRes, messagesRes] = await Promise.all([
+      const [tutorsRes, groupsRes, membershipsRes, requestsRes, sessionsRes, messagesRes] = await Promise.all([
         fetch(`${API_BASE}/tutors`),
         fetch(`${API_BASE}/groups`),
-        fetch(`${API_BASE}/resources`),
-        fetch(`${API_BASE}/quizzes`),
         accessToken ? fetch(`${API_BASE}/groups/memberships`, privateOptions) : Promise.resolve(null),
         accessToken ? fetch(`${API_BASE}/groups/requests`, privateOptions) : Promise.resolve(null),
         accessToken ? fetch(`${API_BASE}/sessions`, privateOptions) : Promise.resolve(null),
         accessToken ? fetch(`${API_BASE}/messages`, privateOptions) : Promise.resolve(null)
       ])
 
-      const [tutorsData, groupsData, resourcesData, quizzesData, membershipsData, requestsData, sessionsData, messagesData] = await Promise.all([
+      const [tutorsData, groupsData, membershipsData, requestsData, sessionsData, messagesData] = await Promise.all([
         tutorsRes.json(),
         groupsRes.json(),
-        resourcesRes.json(),
-        quizzesRes.json(),
         membershipsRes ? membershipsRes.json() : Promise.resolve({ success: true, data: [] }),
         requestsRes ? requestsRes.json() : Promise.resolve({ success: true, data: [] }),
         sessionsRes ? sessionsRes.json() : Promise.resolve({ success: true, data: [] }),
@@ -102,8 +89,6 @@ function App() {
 
       if (tutorsData.success) setTutors(tutorsData.data)
       if (groupsData.success) setGroups(groupsData.data)
-      if (resourcesData.success) setResources(resourcesData.data)
-      if (quizzesData.success) setQuizzes(quizzesData.data)
       if (membershipsData.success) setJoinedGroupIds(new Set(membershipsData.data))
       if (requestsData.success) setPendingGroupRequestIds(new Set(requestsData.data))
       if (sessionsData.success) setSessions(sessionsData.data)
@@ -192,30 +177,6 @@ function App() {
     )
   }, [tutors, search, tutorCourseFilter, tutorSchoolFilter])
 
-  const resourceCourses = useMemo(
-    () => [...new Set([...resources, ...quizzes].map((item) => item.courseCode).filter(Boolean))].sort(),
-    [resources, quizzes]
-  )
-  const resourceTypes = useMemo(
-    () => [...new Set(resources.map((resource) => resource.resourceType).filter(Boolean))].sort(),
-    [resources]
-  )
-  const filteredResources = useMemo(() => {
-    const term = resourceSearch.toLowerCase()
-    return resources.filter((resource) =>
-      (!term || `${resource.title} ${resource.courseCode} ${resource.description}`.toLowerCase().includes(term)) &&
-      (!resourceCourseFilter || resource.courseCode === resourceCourseFilter) &&
-      (!resourceTypeFilter || resource.resourceType === resourceTypeFilter)
-    )
-  }, [resources, resourceSearch, resourceCourseFilter, resourceTypeFilter])
-  const filteredQuizzes = useMemo(() => {
-    const term = resourceSearch.toLowerCase()
-    return quizzes.filter((quiz) =>
-      (!term || `${quiz.title} ${quiz.courseCode} ${quiz.description}`.toLowerCase().includes(term)) &&
-      (!resourceCourseFilter || quiz.courseCode === resourceCourseFilter)
-    )
-  }, [quizzes, resourceSearch, resourceCourseFilter])
-
   const scrollToSection = (sectionId) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -276,40 +237,6 @@ function App() {
       setPendingGroupRequestIds((current) => new Set(current).add(data.data.groupId))
       const group = groups.find((entry) => entry.id === data.data.groupId)
       setStatus({ type: 'success', message: 'Your request to join ' + (group?.name || 'the study group') + ' is pending.' })
-    } catch (error) {
-      setStatus({ type: 'error', message: error.message })
-    }
-  }
-
-  const handleStartQuiz = (quiz) => {
-    setActiveQuiz(quiz)
-    setQuizAnswers({})
-    setQuizResult(null)
-  }
-
-  const handleSubmitQuiz = async (event) => {
-    event.preventDefault()
-    if (!activeQuiz) return
-
-    if (Object.keys(quizAnswers).length !== activeQuiz.questions.length) {
-      setStatus({ type: 'error', message: 'Answer every question before submitting.' })
-      return
-    }
-
-    try {
-      const response = await fetch(`${API_BASE}/quizzes/${activeQuiz.id}/attempts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: activeQuiz.questions.map((_, index) => quizAnswers[index]) })
-      })
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Unable to submit this practice test.')
-      }
-
-      setQuizResult(data.data)
-      setStatus({ type: '', message: '' })
     } catch (error) {
       setStatus({ type: 'error', message: error.message })
     }
@@ -433,7 +360,7 @@ function App() {
         <main className="login-card" id="login-card" aria-labelledby="login-title">
           <div className="login-brand">
             <div className="brand-mark">THE LEARNING HUB</div>
-            <span>Learning made easy</span>
+            <span>Peer learning, together</span>
           </div>
 
           <div className="login-card-heading">
@@ -556,7 +483,6 @@ function App() {
           <button type="button" className={`dashboard-menu-item ${activeSection === 'overview' ? 'active' : ''}`} onClick={() => setActiveSection('overview')}>Dashboard</button>
           <button type="button" className={`dashboard-menu-item ${activeSection === 'tutors' ? 'active' : ''}`} onClick={() => setActiveSection('tutors')}>Available tutors</button>
           <button type="button" className={`dashboard-menu-item ${activeSection === 'groups' ? 'active' : ''}`} onClick={() => setActiveSection('groups')}>Study groups</button>
-          <button type="button" className={`dashboard-menu-item ${activeSection === 'resources' ? 'active' : ''}`} onClick={() => setActiveSection('resources')}>Course resources</button>
           <button type="button" className={`dashboard-menu-item ${activeSection === 'sessions' ? 'active' : ''}`} onClick={() => setActiveSection('sessions')}>Sessions</button>
           <button type="button" className={`dashboard-menu-item ${activeSection === 'messages' ? 'active' : ''}`} onClick={() => setActiveSection('messages')}>Messages</button>
         </nav>
@@ -604,7 +530,7 @@ function App() {
           <div className="section-page-heading">
             <button type="button" className="back-link" onClick={() => setActiveSection('overview')}>← Dashboard</button>
             <p className="eyebrow">Your learning space</p>
-            <h1>{activeSection === 'tutors' ? 'Find a tutor' : activeSection === 'groups' ? 'Study groups' : activeSection === 'resources' ? 'Course resources' : activeSection === 'sessions' ? 'Tutoring sessions' : 'Messages'}</h1>
+            <h1>{activeSection === 'tutors' ? 'Find a tutor' : activeSection === 'groups' ? 'Study groups' : activeSection === 'sessions' ? 'Tutoring sessions' : 'Messages'}</h1>
           </div>
         )}
 
@@ -744,128 +670,6 @@ function App() {
               })}
             </div>
           ) : <p className="empty-state">No study groups yet. Create one to get started.</p>}
-          </section>
-        </div>
-        )}
-
-        {activeSection === 'resources' && (
-        <div className="dashboard-overview-grid">
-          <section className="dashboard-section" id="resources-panel">
-            <div className="section-heading resource-heading">
-              <div>
-                <p className="eyebrow">Study smarter</p>
-                <h2>Course resources</h2>
-              </div>
-              <div className="resource-tabs" role="group" aria-label="Resource type">
-                <button type="button" className={resourceTab === 'materials' ? 'active' : ''} aria-pressed={resourceTab === 'materials'} onClick={() => setResourceTab('materials')}>Materials</button>
-                <button type="button" className={resourceTab === 'practice' ? 'active' : ''} aria-pressed={resourceTab === 'practice'} onClick={() => setResourceTab('practice')}>Practice tests</button>
-              </div>
-            </div>
-
-            <div className="resource-filters">
-              <label className="search-field">
-                <span className="visually-hidden">Search course resources</span>
-                <input value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search by title or course" />
-              </label>
-              <label className="tutor-filter">
-                <span className="visually-hidden">Filter resources by course</span>
-                <select value={resourceCourseFilter} onChange={(event) => setResourceCourseFilter(event.target.value)}>
-                  <option value="">All courses</option>
-                  {resourceCourses.map((course) => <option key={course} value={course}>{course}</option>)}
-                </select>
-              </label>
-              {resourceTab === 'materials' && (
-                <label className="tutor-filter">
-                  <span className="visually-hidden">Filter by material type</span>
-                  <select value={resourceTypeFilter} onChange={(event) => setResourceTypeFilter(event.target.value)}>
-                    <option value="">All material types</option>
-                    {resourceTypes.map((type) => <option key={type} value={type}>{type}</option>)}
-                  </select>
-                </label>
-              )}
-            </div>
-
-            {resourceTab === 'materials' ? (
-              filteredResources.length ? (
-                <div className="resource-grid">
-                  {filteredResources.map((resource) => (
-                    <article className="resource-card" key={resource.id}>
-                      <div className="resource-card-meta"><span>{resource.courseCode}</span><span>{resource.resourceType}</span></div>
-                      <h3>{resource.title}</h3>
-                      <p>{resource.description}</p>
-                      <div className="resource-card-footer">
-                        <small>{resource.source}</small>
-                        <a className="secondary-button" href={`${API_BASE}${resource.downloadUrl}`} download={resource.downloadName} aria-label={`Download ${resource.title}`}>Download</a>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : <p className="empty-state">No materials match those filters.</p>
-            ) : activeQuiz ? (
-              <div className="quiz-workspace">
-                <button type="button" className="back-link quiz-back-link" onClick={() => { setActiveQuiz(null); setQuizResult(null); setQuizAnswers({}) }}>← All practice tests</button>
-                <div className="quiz-title-row">
-                  <div><p className="eyebrow">{activeQuiz.courseCode} practice test</p><h3>{activeQuiz.title}</h3><p>{activeQuiz.description}</p></div>
-                  {quizResult && <strong className="quiz-score">{quizResult.score} / {quizResult.total} correct</strong>}
-                </div>
-                <form onSubmit={handleSubmitQuiz}>
-                  <ol className="quiz-question-list">
-                    {activeQuiz.questions.map((question, questionIndex) => {
-                      const result = quizResult?.results[questionIndex]
-                      return (
-                        <li className="quiz-question" key={`${activeQuiz.id}-${questionIndex}`}>
-                          <fieldset>
-                            <legend>{question.prompt}</legend>
-                            <div className="quiz-options">
-                              {question.options.map((option, optionIndex) => {
-                                const isCorrect = result && result.correctIndex === optionIndex
-                                const isIncorrectSelection = result && result.selectedIndex === optionIndex && !result.isCorrect
-                                return (
-                                  <label className={`${quizAnswers[questionIndex] === optionIndex ? 'selected' : ''} ${isCorrect ? 'correct' : ''} ${isIncorrectSelection ? 'incorrect' : ''}`} key={option}>
-                                    <input
-                                      type="radio"
-                                      name={`question-${questionIndex}`}
-                                      value={optionIndex}
-                                      checked={quizAnswers[questionIndex] === optionIndex}
-                                      disabled={Boolean(quizResult)}
-                                      required
-                                      onChange={() => setQuizAnswers((current) => ({ ...current, [questionIndex]: optionIndex }))}
-                                    />
-                                    <span>{option}</span>
-                                  </label>
-                                )
-                              })}
-                            </div>
-                          </fieldset>
-                          {result && <p className={`quiz-explanation ${result.isCorrect ? 'correct' : 'incorrect'}`}><strong>{result.isCorrect ? 'Correct.' : `Answer: ${result.correctAnswer}.`}</strong> {result.explanation}</p>}
-                        </li>
-                      )
-                    })}
-                  </ol>
-                  {quizResult ? (
-                    <button type="button" className="secondary-button" onClick={() => handleStartQuiz(activeQuiz)}>Try again</button>
-                  ) : (
-                    <button type="submit" className="primary-button">Submit answers</button>
-                  )}
-                </form>
-              </div>
-            ) : (
-              filteredQuizzes.length ? (
-                <div className="resource-grid">
-                  {filteredQuizzes.map((quiz) => (
-                    <article className="resource-card practice-card" key={quiz.id}>
-                      <div className="resource-card-meta"><span>{quiz.courseCode}</span><span>{quiz.questions.length} questions</span></div>
-                      <h3>{quiz.title}</h3>
-                      <p>{quiz.description}</p>
-                      <div className="resource-card-footer">
-                        <small>Answers and feedback after submission</small>
-                        <button type="button" className="primary-button" onClick={() => handleStartQuiz(quiz)}>Start test</button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : <p className="empty-state">No practice tests match those filters.</p>
-            )}
           </section>
         </div>
         )}
