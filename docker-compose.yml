@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: peer-tutoring-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: peer_tutoring
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - peer_tutoring_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d peer_tutoring"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  peer_tutoring_postgres_data:

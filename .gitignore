@@ -1,0 +1,9 @@
+node_modules
+.env
+apps/*/dist
+apps/*/.expo
+apps/*/.expo-shared
+apps/*/coverage
+apps/mobile/expo-export.log
+.DS_Store
+npm-debug.log*

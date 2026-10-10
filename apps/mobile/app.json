@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Peer Tutoring Finder",
+    "slug": "peer-tutoring-finder",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splashScreen": {
+      "backgroundColor": "#eff6ff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.peer.tutoring.finder"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "platforms": ["ios", "android", "web"]
+  }
+}
