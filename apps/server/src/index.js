@@ -277,10 +277,12 @@ const seedDatabase = async () => {
   for (const tutor of mockTutors) {
     await pool.query(
       `INSERT INTO tutors (name, course_code, department, rating, availability, bio)
-       SELECT $1, $2, $3, $4, $5, $6
+       SELECT $1::varchar(255), $2::varchar(50), $3::varchar(255),
+       $4::decimal(2,1), $5::varchar(255), $6::text
        WHERE NOT EXISTS (
          SELECT 1 FROM tutors
-         WHERE LOWER(name) = LOWER($1) AND LOWER(course_code) = LOWER($2)
+         WHERE LOWER(name) = LOWER($1::varchar(255))
+  AND LOWER(course_code) = LOWER($2::varchar(50))
        )`,
       [tutor.name, tutor.courseCode, tutor.department, tutor.rating, tutor.availability, tutor.bio]
     );
@@ -307,10 +309,12 @@ const seedDatabase = async () => {
   for (const group of mockGroups) {
     await pool.query(
       `INSERT INTO study_groups (name, course_code, department, members_count, next_session)
-       SELECT $1, $2, $3, $4, $5
+       SELECT $1::varchar(255), $2::varchar(50), $3::varchar(255),
+       $4::integer, $5::varchar(255)
        WHERE NOT EXISTS (
          SELECT 1 FROM study_groups
-         WHERE LOWER(name) = LOWER($1) AND LOWER(course_code) = LOWER($2)
+         WHERE LOWER(name) = LOWER($1::varchar(255))
+  AND LOWER(course_code) = LOWER($2::varchar(50))
        )`,
       [group.name, group.courseCode, group.department, group.members, group.nextSession]
     );
